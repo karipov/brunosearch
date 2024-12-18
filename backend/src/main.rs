@@ -1,9 +1,11 @@
+use anyhow::{anyhow, Result};
 use axum::{extract::State, routing::post, Json, Router};
 use axum_macros::debug_handler;
 use dotenvy::dotenv;
 use http::Method;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use subprocess::Exec;
 use tower_http::{compression::CompressionLayer, cors::Any, cors::CorsLayer, services::ServeDir};
 
 use course::Course;
@@ -21,20 +23,28 @@ use clap::Parser;
 struct Args {
     #[arg(short, long, help = "Specify whether deployment is local or not")]
     local: bool,
-    #[arg(
-        short,
-        long,
-        default_value_t = false,
-        help = "Specifiy to reindex the database"
-    )]
+
+    #[arg(short, long, help = "Specifiy to reindex the database")]
     reindex: bool,
+
     #[arg(short, long, help = "Frontend static file directory")]
     frontend: String,
 
-    #[arg(short, long, requires = "reindex", help = "Raw scraped courses file")]
-    courses: String,
-    #[arg(short, long, requires = "reindex", help = "Embedded courses file")]
-    embedded: String,
+    #[arg(
+        short,
+        long,
+        required_if_eq("reindex", "true"),
+        help = "Raw scraped courses file"
+    )]
+    courses: Option<String>,
+
+    #[arg(
+        short,
+        long,
+        required_if_eq("reindex", "true"),
+        help = "Embedded courses file"
+    )]
+    embedded: Option<String>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -57,7 +67,7 @@ async fn search(State(db): State<Arc<VectorDB>>, Json(query): Json<Search>) -> J
 }
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> Result<()> {
     // get the command line arguments
     let args = Args::parse();
 
@@ -65,11 +75,31 @@ async fn main() -> anyhow::Result<()> {
     println!("Loading environment variables...");
     dotenv().ok();
 
+    // start redis
+    if args.local {
+        Exec::cmd("docker")
+            .arg("start")
+            .arg("brunosearch-redis-1")
+            .capture()
+            .map_err(|_| {
+                anyhow!("Failed to start redis, make sure brunosearch container is running")
+            })?;
+    } else {
+        Exec::cmd("redis-server")
+            .args(&["--loadmodule", "/opt/redis-stack/lib/redisearch.so"])
+            .args(&["--loadmodule", "/opt/redis-stack/lib/rejson.so"])
+            .args(&["--port", "6379"])
+            .args(&["--save", ""])
+            .capture()
+            .map_err(|_| anyhow!("Failed to start redis"))?;
+    }
+
     let db = VectorDB::new()?;
 
     // delete the existing index and records
     if args.reindex {
-        let courses = corpus::process_courses(&args.courses, &args.embedded).await?;
+        let courses =
+            corpus::process_courses(&args.courses.unwrap(), &args.embedded.unwrap()).await?;
         db.reset().await.unwrap();
         db.populate_database(courses).await.unwrap();
         db.create_index().await.unwrap();

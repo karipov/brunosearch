@@ -24,6 +24,7 @@ WORKDIR /app
 RUN apk update && apk add --no-cache ca-certificates
 COPY --from=redis-stack /opt/redis-stack/lib/redisearch.so /opt/redis-stack/lib/redisearch.so
 COPY --from=redis-stack /opt/redis-stack/lib/rejson.so /opt/redis-stack/lib/rejson.so
-COPY --from=backend /app/target/release/backend /usr/local/bin/backend
+COPY --from=backend /app/target/release/backend /usr/bin/brunosearch
 COPY --from=frontend /app/dist static
-CMD ["backend"]
+COPY data data
+CMD "brunosearch --frontend static --reindex --courses data/spring2025/courses.json --embedded data/spring2025/courses_embedded.json"

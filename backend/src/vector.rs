@@ -1,4 +1,3 @@
-use std::env;
 use redis::{Client, pipe};
 use anyhow::Result;
 
@@ -13,7 +12,7 @@ pub struct VectorDB {
 impl VectorDB {
     /// Create a new VectorDB instance
     pub fn new() -> Result<Self> {
-        let client = Client::open(env::var("REDIS_URL")?)?;
+        let client = Client::open("redis://localhost:6379")?;
 
         Ok(Self { client })
     }
@@ -45,8 +44,6 @@ impl VectorDB {
             .arg("LIMIT").arg(0).arg(num_results)
             .arg("DIALECT").arg(4)
             .query_async(&mut con).await?;
-            
-        dbg!(&results);
 
         // build a pipeline to get the course data
         let mut pipeline = pipe();
