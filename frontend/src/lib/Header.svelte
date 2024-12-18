@@ -1,0 +1,1 @@
+<h1 class="text-3xl font-bold mb-2 mt-4 mx-2"><span class="text-brown-800">bruno</span><span class="font-light">search</span></h1>
