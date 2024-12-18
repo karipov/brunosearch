@@ -15,8 +15,6 @@ pub struct Course {
     pub soph: bool,
     pub fys: bool,
     pub rpp: bool,
-
-    #[serde(skip_deserializing)]
     pub embedding: Option<Vec<f32>>,
 }
 

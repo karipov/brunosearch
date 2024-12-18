@@ -71,12 +71,12 @@ async fn main() -> Result<()> {
     // get the command line arguments
     let args = Args::parse();
 
-    // load environment variables from .env file
-    println!("Loading environment variables...");
-    dotenv().ok();
-
     // start redis
+    println!("Starting redis...");
     if args.local {
+        println!("Loading environment variables...");
+        dotenv().ok();
+
         Exec::cmd("docker")
             .arg("start")
             .arg("brunosearch-redis-1")
@@ -88,16 +88,20 @@ async fn main() -> Result<()> {
         Exec::cmd("redis-server")
             .args(&["--loadmodule", "/opt/redis-stack/lib/redisearch.so"])
             .args(&["--loadmodule", "/opt/redis-stack/lib/rejson.so"])
+            .args(&["--loadmodule", "/opt/redis-stack/lib/redisbloom.so"])
             .args(&["--port", "6379"])
             .args(&["--save", ""])
+            .args(&["--daemonize", "yes"])
             .capture()
             .map_err(|_| anyhow!("Failed to start redis"))?;
     }
 
+    println!("Connecting to redis...");
     let db = VectorDB::new()?;
 
     // delete the existing index and records
     if args.reindex {
+        println!("Reindexing database...");
         let courses =
             corpus::process_courses(&args.courses.unwrap(), &args.embedded.unwrap()).await?;
         db.reset().await.unwrap();
@@ -105,7 +109,7 @@ async fn main() -> Result<()> {
         db.create_index().await.unwrap();
     }
 
-    println!("Server running on port 3000");
+    println!("Server running on port 8080");
     // build application with a single route
     let cors_layer = CorsLayer::new()
         .allow_origin(Any)
@@ -126,7 +130,7 @@ async fn main() -> Result<()> {
         .with_state(Arc::new(db));
 
     // run app with hyper, listening globally on port 3000
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await?;
     axum::serve(listener, app).await?;
 
     Ok(())
