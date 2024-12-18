@@ -30,21 +30,11 @@ struct Args {
     #[arg(short, long, help = "Frontend static file directory")]
     frontend: String,
 
-    #[arg(
-        short,
-        long,
-        required_if_eq("reindex", "true"),
-        help = "Raw scraped courses file"
-    )]
-    courses: Option<String>,
+    #[arg(short, long, help = "Raw scraped courses file")]
+    courses: String,
 
-    #[arg(
-        short,
-        long,
-        required_if_eq("reindex", "true"),
-        help = "Embedded courses file"
-    )]
-    embedded: Option<String>,
+    #[arg(short, long, help = "Embedded courses file")]
+    embedded: String,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -66,10 +56,15 @@ async fn search(
     let quoted = embed::extract_first_quote(&query.search);
 
     let search_embedding = embed::embed_query(&query.search).await.unwrap();
-    let output = db
+    let mut output = db
         .search_embedding(quoted, search_embedding, 20)
         .await
         .unwrap();
+
+    // remove the embedded field from the output to save bandwidth
+    for course in output.iter_mut() {
+        course.embedding = None;
+    }
 
     Json(output)
 }
@@ -107,22 +102,26 @@ async fn main() -> Result<()> {
     println!("Connecting to redis...");
     let db = VectorDB::new()?;
 
-    // delete the existing index and records
-    if args.reindex {
+    // block until redis is ready (handle connection error)
+    loop {
+        if db.is_ready().await {
+            break;
+        } else {
+            println!("Waiting for redis to start...");
+            tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+        }
+    }
+
+    // reindex the database if necessary
+    if args.reindex || !db.is_populated().await? {
         println!("Reindexing database...");
-        let courses =
-            corpus::process_courses(&args.courses.unwrap(), &args.embedded.unwrap()).await?;
-        db.reset().await.unwrap();
-        db.populate_database(courses).await.unwrap();
-        db.create_index().await.unwrap();
+        let courses = corpus::process_courses(&args.courses, &args.embedded).await?;
+        db.reset().await?;
+        db.populate_database(courses).await?;
+        db.create_index().await?;
     }
 
     println!("Server running on port 8080");
-    // build application with a single route
-    let cors_layer = CorsLayer::new()
-        .allow_origin(Any)
-        .allow_methods(vec![Method::GET, Method::POST])
-        .allow_headers(Any);
 
     let comression_layer: CompressionLayer = CompressionLayer::new()
         .br(true)
@@ -130,11 +129,19 @@ async fn main() -> Result<()> {
         .gzip(true)
         .zstd(true);
 
-    let app = Router::new()
+    let mut app = Router::new()
         .route("/search", post(search))
         .nest_service("/", ServeDir::new(args.frontend))
         .layer(comression_layer)
         .with_state(Arc::new(db));
+
+    if args.local {
+        let cors_layer = CorsLayer::new()
+            .allow_origin(Any)
+            .allow_methods(vec![Method::GET, Method::POST])
+            .allow_headers(Any);
+        app = app.layer(cors_layer);
+    }
 
     // run app with hyper, listening globally on port 3000
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await?;

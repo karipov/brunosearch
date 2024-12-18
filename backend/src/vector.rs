@@ -24,6 +24,19 @@ impl VectorDB {
         Ok(())
     }
 
+    /// check if the database is ready
+    pub async fn is_ready(&self) -> bool {
+        let con = self.client.get_multiplexed_async_connection().await;
+        con.is_ok()
+    }
+
+    /// check if the database is populated
+    pub async fn is_populated(&self) -> Result<bool> {
+        let mut con = self.client.get_multiplexed_async_connection().await?;
+        let keys: Vec<String> = redis::cmd("KEYS").arg("courses:*").query_async(&mut con).await?;
+        Ok(!keys.is_empty())
+    }
+
     #[rustfmt::skip]
     pub async fn search_embedding(&self,
         quoted: Option<String>,

@@ -49,16 +49,15 @@
   }
 </script>
 
-<Header />
-
-<Landing />
-
-<SearchBar on_search={search} initial_search={random_search_term} />
-
-{#if search_results.length > 0}
-  <ul>
-    {#each search_results as result}
-      <ResultCard {result} />
-    {/each}
-  </ul>
-{/if}
+<div class="mx-auto w-full max-w-screen-sm md:max-w-screen-md">
+  <Header />
+  <Landing />
+  <SearchBar on_search={search} initial_search={random_search_term} />
+  {#if search_results.length > 0}
+    <ul>
+      {#each search_results as result}
+        <ResultCard {result} />
+      {/each}
+    </ul>
+  {/if}
+</div>

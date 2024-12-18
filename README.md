@@ -1,47 +1,22 @@
-# Svelte + TS + Vite
+# Brunosearch
 
-This template should help get you started developing with Svelte and TypeScript in Vite.
+[**brunosearch.com**](http://brunosearch.com) is a course search engine for Brown University. Users can insert a rough description of what they're looking for in a course, which is then transformed into a semantic embedding powered by OpenAI. Search terms don't have to be precise, examples include "how to make sick beats" or "a class on the intersection of art and technology."
 
-## Recommended IDE Setup
+## Motivation
 
-[VS Code](https://code.visualstudio.com/) + [Svelte](https://marketplace.visualstudio.com/items?itemName=svelte.svelte-vscode).
+As registration looms near or shopping period is in full swing, I've often found myself frantically searching for a fun course to offset a painful looking shopping cart. Groupchats get flooded with messages like "does anyone know a fun class to take?" or "what's a class that's not too hard but also interesting?"
 
-## Need an official Svelte framework?
+Brown already has a number of tools to help out here, like [The Critical Review](https://thecriticalreview.org/), [BurntOutAtBrown](https://burntoutatbrown.com/) and of course, [CAB](https://cab.brown.edu). While these are great resources, it's not always easy to find classes that are fun and aligned with my interests. I wanted to build something that would allow searching for courses in a more natural way, without having to know exactly what I'm looking for -- just like how I'd ask a friend for recommendations.
 
-Check out [SvelteKit](https://github.com/sveltejs/kit#readme), which is also powered by Vite. Deploy anywhere with its serverless-first approach and adapt to various platforms, with out of the box support for TypeScript, SCSS, and Less, and easily-added support for mdsvex, GraphQL, PostCSS, Tailwind CSS, and more.
+## Technical Details
 
-## Technical considerations
+**Brunosearch** is a custom, distributed search engine written in [Rust](https://www.rust-lang.org/), using an in-memory [Redis](https://redis.io/) vector database for similarity search. The embedding is powered by OpenAI's [text-embedding-3-small](https://openai.com/index/new-embedding-models-and-api-updates/) model, which scores well on most benchmarks and simplifies deployment in the cloud. The frontend is built in [Svelte](https://svelte.dev/) and [TailwindCSS](https://tailwindcss.com/). The entire app is hosted on [Fly.io](https://fly.io/) for easy deployment and scaling.
 
-**Why use this over SvelteKit?**
+<!-- ## Development
 
-- It brings its own routing solution which might not be preferable for some users.
-- It is first and foremost a framework that just happens to use Vite under the hood, not a Vite app.
+You need Rust, Node.js  -->
 
-This template contains as little as possible to get started with Vite + TypeScript + Svelte, while taking into account the developer experience with regards to HMR and intellisense. It demonstrates capabilities on par with the other `create-vite` templates and is a good starting point for beginners dipping their toes into a Vite + Svelte project.
 
-Should you later need the extended capabilities and extensibility provided by SvelteKit, the template has been structured similarly to SvelteKit so that it is easy to migrate.
+## Acknowledgements
 
-**Why `global.d.ts` instead of `compilerOptions.types` inside `jsconfig.json` or `tsconfig.json`?**
-
-Setting `compilerOptions.types` shuts out all other types not explicitly listed in the configuration. Using triple-slash references keeps the default TypeScript setting of accepting type information from the entire workspace, while also adding `svelte` and `vite/client` type information.
-
-**Why include `.vscode/extensions.json`?**
-
-Other templates indirectly recommend extensions via the README, but this file allows VS Code to prompt the user to install the recommended extension upon opening the project.
-
-**Why enable `allowJs` in the TS template?**
-
-While `allowJs: false` would indeed prevent the use of `.js` files in the project, it does not prevent the use of JavaScript syntax in `.svelte` files. In addition, it would force `checkJs: false`, bringing the worst of both worlds: not being able to guarantee the entire codebase is TypeScript, and also having worse typechecking for the existing JavaScript. In addition, there are valid use cases in which a mixed codebase may be relevant.
-
-**Why is HMR not preserving my local component state?**
-
-HMR state preservation comes with a number of gotchas! It has been disabled by default in both `svelte-hmr` and `@sveltejs/vite-plugin-svelte` due to its often surprising behavior. You can read the details [here](https://github.com/rixo/svelte-hmr#svelte-hmr).
-
-If you have state that's important to retain within a component, consider creating an external store which would not be replaced by HMR.
-
-```ts
-// store.ts
-// An extremely simple external store
-import { writable } from 'svelte/store'
-export default writable(0)
-```
+Created by Komron Aripov. I took a lot of inspiration from Eric Zhang's [classes.wtf](https://classes.wtf/) and [Dispict](https://dispict.com/) projects. Much of the CAB scraping code came directly from BurntOutAtBrown's [course scraper](https://github.com/KevinCox9600/burnt-out-at-brown), which was a huge help.
