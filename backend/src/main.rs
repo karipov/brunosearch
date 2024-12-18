@@ -53,7 +53,15 @@ struct Search {
 }
 
 #[debug_handler]
-async fn search(State(db): State<Arc<VectorDB>>, Json(query): Json<Search>) -> Json<Vec<Course>> {
+async fn search(
+    State(db): State<Arc<VectorDB>>,
+    Json(mut query): Json<Search>,
+) -> Json<Vec<Course>> {
+    // cut off the search query if it is too long
+    if query.search.len() > 256 {
+        query.search = query.search[..256].to_string();
+    }
+
     // find the first text quoted in the search query
     let quoted = embed::extract_first_quote(&query.search);
 
@@ -125,7 +133,6 @@ async fn main() -> Result<()> {
     let app = Router::new()
         .route("/search", post(search))
         .nest_service("/", ServeDir::new(args.frontend))
-        .layer(cors_layer)
         .layer(comression_layer)
         .with_state(Arc::new(db));
 
