@@ -31,4 +31,4 @@ COPY --from=redis-stack /opt/redis-stack/lib/redisbloom.so /opt/redis-stack/lib/
 COPY --from=backend /app/target/release/backend /usr/bin
 COPY --from=frontend /app/dist static
 COPY data data
-CMD backend --frontend static --courses data/spring2025/courses.json --embedded data/spring2025/courses_embedded.json
+CMD backend --frontend static --courses data/spring2025/courses.json --embedded data/fall2025/courses_embedded.json
